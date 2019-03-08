@@ -86,8 +86,7 @@
         document.getElementById("game").style.display = "inline"
 
         var payload = {
-            "type": "question",
-            "id": 1
+            "type": "question"
         }
         // Make the request to the WebSocket.
         ws.send(JSON.stringify(payload));
@@ -99,16 +98,24 @@
     function move() {
         var elem = document.getElementById("myBar");
         var width = 1;
-        var id = setInterval(frame, 160);
+        var id = setInterval(frame, 120);
+        var payload = {
+            "type": "question"
+        }
 
         function frame() {
-            if (width >= 100) {
+            if (width == 100) {
+                // Make the request to the WebSocket.
+                ws.send(JSON.stringify(payload));
+                elem.style.width = '0%';
                 clearInterval(id);
+                move()
             } else {
                 width++;
                 elem.style.width = width + '%';
             }
         }
+
 
         //next question
     }
@@ -179,10 +186,8 @@
                     for (var i=0; i < b_answers.length; i++){
 
                         b_answers[i].onclick = function(e){ onclickanswer(this) };
-                        b_answers[i].class = "col py-3 px-lg-5 btn btn-outline-info answer";
+                        b_answers[i].className = "col py-3 px-lg-5 btn btn-outline-info answer";
                     }
-
-
 
                 }
                 break;
@@ -192,8 +197,9 @@
 
                     for (var i=0; i<b_answers.length; i++){
                         b_answers[i].onclick = false;
-                        b_answers[i].class = "col py-3 px-lg-5 btn btn-outline-danger answer";
+                        b_answers[i].className = "col py-3 px-lg-5 btn btn btn-secondary answer";
                     }
+                    document.getElementById(messageDict.id).className = "col py-3 px-lg-5 btn btn btn-primary answer";
                 }
                 break;
 

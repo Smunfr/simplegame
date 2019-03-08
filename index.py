@@ -6,12 +6,7 @@ import multiprocessing
 from multiprocessing import Process
 import time
 
-def timeoutProcess():
-    i=0
-    while True:
-        i += 1
-        #print(i)
-        time.sleep(1)
+
 
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
@@ -21,7 +16,7 @@ class SimpleWebSocket(tornado.websocket.WebSocketHandler):
     connections = set()
     users = []
     uid = ''
-    current_question = 0
+    current_question = 1
     answers = {1: {},
                2: {},
                3: {},
@@ -47,12 +42,18 @@ class SimpleWebSocket(tornado.websocket.WebSocketHandler):
                         res['user'] = self.users
 
                 if res["type"] == 'question':
+                    #Todo:
+                    #check game is runing
+                    #check if time is not manipulated
+                    #reset time
+                    #set time started
                     self.play_game(res, client)
 
                 if res['type'] == 'answer_quest':
-                    # TODO: Multiprocessing Problem
+
                     # save all answers of all player
                     self.answers[self.current_question][self.uid] = res['id']
+
 
             message = json.dumps(res)
                 #change to dashboard leter
@@ -61,20 +62,16 @@ class SimpleWebSocket(tornado.websocket.WebSocketHandler):
             client.write_message(message)
 
     def play_game(self, res, client):
-        # loop questions
-        for i, q in self.questions.items():
 
-            res['question'] = q['question']
-            res['answers'] = q['answers']
-            message = json.dumps(res)
-            self.current_question = i
-            print(message)
-            client.write_message(message)
-            taction = Process(target=timeoutProcess)
-            taction.daemon = True;
-            taction.start()
-            taction.join(timeout=10)
-            taction.terminate()
+        res['question'] = self.questions[self.current_question]['question']
+        res['answers'] = self.questions[self.current_question]['answers']
+
+        self.current_question = self.current_question+1
+
+        message = json.dumps(res)
+        print(message)
+        client.write_message(message)
+
 
 
     def on_close(self):
@@ -97,7 +94,6 @@ def make_app():
     ])
 
 if __name__ == "__main__":
-    queue = multiprocessing.Queue()
 
     app = make_app()
     app.listen(8888)
