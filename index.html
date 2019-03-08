@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Application</title>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+          integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<style>
+#myProgress {
+  width: 100%;
+  background-color: grey;
+}
+
+#myBar {
+  width: 0%;
+  height: 30px;
+  background-color: green;
+}
+</style>
+</head>
+<body>
+<div class="container px-lg-5" style="width:100%; padding: 20px; overflow-y: scroll;" id="room">
+    <div class="row">
+        <div class="col-8 alert alert-success" role="alert" id="messages"><h2>Chat</h2></div>
+        <div class="col-4 alert alert-info" role="alert" id="users"><h2>User</h2>
+            <div id="users-id"></div>
+        </div>
+    </div>
+    <div style="padding-top: 20px;">
+        <form onsubmit="return sendMessage()">
+            <input id="message" type="text" style="width: 70%;">
+            <button style="width: 25%">Send</button>
+        </form>
+    </div>
+    <div style="padding-top: 20px;">
+        <form onsubmit="return startGame()">
+            <button style="width: 25%">Play</button>
+        </form>
+    </div>
+</div>
+
+
+<div id="game" class="container" style="display:none">
+    <div id="myProgress">
+        <div id="myBar"></div>
+    </div>
+    <div class="row justify-content-md-center">
+        <div class="col-10 alert alert-success" role="alert"><h2 id="question">Frage</h2></div>
+        <div class="col-10 py-3 px-lg-5 border bg-light">
+            <div class=" row mx-lg-n5">
+                <div type="button" class="col py-3 px-lg-5 btn btn-outline-info answer" id="0"><h2 id="a1">A1</h2></div>
+                <div type="button" class="col py-3 px-lg-5 btn btn-outline-info answer" id="1"><h2 id="a2">A2</h2></div>
+            </div>
+
+            <div class="row mx-lg-n5">
+                <div type="button" class="col py-3 px-lg-5 btn btn-outline-info answer" id="2"><h2 id="a3">A3</h2></div>
+                <div type="button" class="col py-3 px-lg-5 btn btn-outline-info answer" id="3"><h2 id="a4">A4</h2></div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+<script>
+    function onclickanswer(e){
+
+        var aid = e.id;
+        var payload = {
+            "type": "answer_quest",
+            "user": username,
+            "id" : aid
+        };
+        // Make the request to the WebSocket.
+        ws.send(JSON.stringify(payload));
+    }
+
+
+
+    function startGame() {
+        //check player...
+
+        //hide chat
+        document.getElementById("room").style.display = "none"
+        document.getElementById("game").style.display = "inline"
+
+        var payload = {
+            "type": "question",
+            "id": 1
+        }
+        // Make the request to the WebSocket.
+        ws.send(JSON.stringify(payload));
+        move()
+
+        return false;
+    }
+
+    function move() {
+        var elem = document.getElementById("myBar");
+        var width = 1;
+        var id = setInterval(frame, 160);
+
+        function frame() {
+            if (width >= 100) {
+                clearInterval(id);
+            } else {
+                width++;
+                elem.style.width = width + '%';
+            }
+        }
+
+        //next question
+    }
+
+
+    var username = prompt("What's your name?");
+    var ws = new WebSocket("ws://localhost:8888/websocket/username/" + username);
+    ws.onmessage = function (evt) {
+        console.log(evt)
+        var messageDict = JSON.parse(evt.data);
+        // Create a div with the format `user: message`.
+
+        if ('type' in messageDict) {
+            switch (messageDict.type) {
+                //do some message
+                case "user_message": {
+                    var messageBox = document.createElement("div");
+                    messageBox.innerHTML = messageDict.user + ": " + messageDict.message;
+                    document.getElementById("messages").appendChild(messageBox)
+                }
+                    break;
+                //close connect
+                case "close": {
+                    var n_div = document.getElementById("users-id").getElementsByTagName('div');
+                    //var users = messageDict.user.split(',');
+                    for (var i = 0, n = n_div.length; i < n; i = i + 1) {
+
+                        var s_id = n_div[i].id;
+                        if (!messageDict.user.includes(s_id)) {
+
+                            document.getElementById(s_id).remove();
+                        }
+                    }
+
+                }
+                //open connection
+                case "open": {
+
+                    //var users = messageDict.user.split(',');
+                    if(typeof(messageDict.user) == 'string') {
+                        messageDict.user = [messageDict.user];
+                    }
+                    for (id in messageDict.user) {
+
+                        if (document.getElementById(messageDict.user[id]) == null) {
+
+                            var userBox = document.createElement("div");
+                            userBox.innerHTML = messageDict.user[id];
+                            userBox.setAttribute('id', messageDict.user[id]);
+                            document.getElementById("users-id").appendChild(userBox)
+                        }
+                    }
+
+                }
+                break;
+                //do a question
+                case 'question': {
+                    document.getElementById('question').innerHTML = messageDict.question;
+
+                    var answers = messageDict.answers;
+                    for (answerid in answers ){
+
+                        document.getElementById("a"+(parseFloat(answerid)+1)).innerHTML = answers[answerid];
+                    }
+
+                    var b_answers = document.getElementsByClassName('answer');
+
+                    for (var i=0; i < b_answers.length; i++){
+
+                        b_answers[i].onclick = function(e){ onclickanswer(this) };
+                        b_answers[i].class = "col py-3 px-lg-5 btn btn-outline-info answer";
+                    }
+
+
+
+                }
+                break;
+                //answered question
+                case 'answer_quest': {
+                    var b_answers = document.getElementsByClassName('answer');
+
+                    for (var i=0; i<b_answers.length; i++){
+                        b_answers[i].onclick = false;
+                        b_answers[i].class = "col py-3 px-lg-5 btn btn-outline-danger answer";
+                    }
+                }
+                break;
+
+            }
+
+        } else {
+            alert('something getting wrong')
+        }
+        ;
+    };
+
+    ws.onopen = function (e) {
+        var welcome = {
+            "type": 'open',
+            "user": username
+        }
+        ws.send(JSON.stringify(welcome));
+    }
+
+    function sendMessage() {
+        var messageInput = document.getElementById("message");
+        var message = messageInput.value;
+        var payload = {
+            "type": "user_message",
+            "message": message,
+            "user": username
+        }
+        // Make the request to the WebSocket.
+        ws.send(JSON.stringify(payload));
+        // Clear the message from the input.
+        messageInput.value = "";
+        return false;
+    }
+
+</script>
+
+
+<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+<script src="https://code.jquery.com/jquery-1.12.4.min.js"
+        integrity="sha384-nvAa0+6Qg9clwYCGGPpDQLVpLNn0fRaROjHqs13t4Ggj3Ez50XnGQqc/r8MhnRDZ"
+        crossorigin="anonymous"></script>
+<!-- Include all compiled plugins (below), or include individual files as needed -->
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"
+        integrity="sha384-aJ21OjlMXNL5UyIl/XNwTMqvzeRMZH2w8c5cRVpzpU8Y5bApTppSuUkhZXN0VxHd"
+        crossorigin="anonymous"></script>
+</body>
+</html>
